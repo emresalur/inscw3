@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+	<head>
+        <h1>Welcome to our currency exchange website.</h1>
+        <h2>Here you can choose different currencies and see how the conversions have changed over the past two months.</h2>
+        <h3>Please choose two different currencies from the drop-down list and click on the "Load Response" button to see the graph.</h3>
+        <script src="https://code.jquery.com/jquery-3.6.0.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+		
+	</head>
+
+	<body>
+
+		<p id=“demo”></p>
+
+		<button type=“button”> Load Response</button>
+
+        <label for="currencies">From:</label>
+        <select name="fromCurrency" id="fromCurrency">
+            <option value="JPY"> Japanese Yen</option>
+            <option value="RUB"> Russian Ruble</option>
+            <option value="EUR"> Euro</option>
+            <option value="USD">United States Dollar</option>
+            <option value="GBP">Pound Sterling</option>
+        </select>
+
+        <label for="currencies">To:</label>
+        <select name="toCurrency" id="toCurrency">
+            <option value="JPY"> Japanese Yen</option>
+            <option value="RUB"> Russian Ruble</option>
+            <option value="EUR"> Euro</option>
+            <option value="USD">United States Dollar</option>
+            <option value="GBP">Pound Sterling</option>
+        </select>
+
+        <div>
+            <canvas id="myChart"></canvas>
+        </div>
+
+	</body>
+
+    <script>
+        const labels = [
+            'January',
+            'February',
+            'March',
+            'April',
+            'May',
+            'June',
+            'July'
+        ]; //example labels, this will change once we press the load response button
+    
+        const data = {
+            labels: labels,
+            datasets: [{
+                label: "Currency Exchange Rates ",
+                backgroundColor: 'rgb(255, 99, 132)',
+                borderColor: 'rgb(255, 99, 132)',
+                data: [0, 10, 5, 2, 20, 30, 45],
+            }] //example data, once again thiss wil change once we press the load response button
+        };
+    
+        const config = {
+            type: 'line',
+            data: data,
+            options: {}
+        }; //configuration
+
+        const myChart = new Chart(
+            document.getElementById('myChart'),
+            config
+        ); //creating our chart
+
+        $(document).ready(()=>{
+            $("button").click(function(){
+
+                /* Explanation for adjustments:
+                
+                The coursework specification specifies that we use the range method for collecting our API. However, this requires 35$ per month
+                and even though I have attempetd to pay for it, the system does not accept it and does not allow me to upgrade my plan.
+
+                So, from the request playground I found how to get a URL where you can set the base currency and exchangee it to whatever you want on a specific date.
+                
+                The free version only allows 300 request per month, if I get a request for every single date (60 days), the system will not work after 5 attempts.
+                Thus, I created mock data that changes the currency exchange rate by 10 percent. With this method, I can get a chart by only requesting one URL from the currency API.
+
+                Further explanations will be shown on my methods.
+             
+                */
+
+                var fromCurrencyValue = $('select[id=fromCurrency] option').filter(':selected').val() //get the ID for the selected currency
+                var toCurrencyValue = $('select[id=toCurrency] option').filter(':selected').val() //get the ID for the selected currency
+                var currencyAPIurl = `https://api.currencyapi.com/v3/latest?apikey=TR6RRShaeQeajspAaNZTbv452vmeUbxdyDYDa0SO&currencies=${toCurrencyValue}&base_currency=${fromCurrencyValue}`
+                //update our currency API URL so that it gets the exchange rate that we have selected from the dropdown lists
+                
+                $.ajax({
+                    
+                    "url": currencyAPIurl,
+                    "type":"GET",
+                    "data":{},
+                    "dataType":"JSON"
+                })
+                .done((responseData)=>{
+                    let latestValue = responseData["data"][toCurrencyValue]["value"] //we get our initial data from our API
+                    let dataPoints = [latestValue] //add it to an array
+
+                    let currentDate = new Date() //gets the current date
+                    let dateList = [currentDate.toISOString().slice(0, 10)] //turns into a yyyy-mm-dd format
+
+                    for(let i = 0; i < 59; i++) { //for the past 60 days
+                        let randomMultiplier = Math.random() * 0.2 + 0.9 //generate random number between 0.9 and 1.1
+                        dataPoints.push(latestValue * randomMultiplier) //randomly change the data by 10% since we cannot access range and have limited API requests
+
+                        currentDate.setDate(currentDate.getDate() - 1); //change date to yesterday's date
+                        dateList.push(currentDate.toISOString().slice(0, 10)) //yyyy-mm-dd format
+                    }
+                    dateList.reverse() //reverse list so that the date increases from left to right on the graph
+                    myChart.data.labels = dateList; //add dates
+                    myChart.data.datasets[0].data = dataPoints; //add data
+                    myChart.update();//update it every time when we change currencies and load response
+
+                    let txt = JSON.stringify(responseData);
+                    $("#demo").html(txt);
+                })
+                
+            })
+        });
+    </script>
+    
+    
+</html> 
